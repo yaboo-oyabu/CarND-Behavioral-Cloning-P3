@@ -56,7 +56,7 @@ def preprocess(image):
 
     return input_image
 
-def generator(target, samples, batch_size=32):
+def generator(samples, batch_size=32):
     num_samples = len(samples)
     while 1: # Loop forever so the generator never terminates
         random.shuffle(samples)
@@ -66,7 +66,7 @@ def generator(target, samples, batch_size=32):
             images = []
             angles = []
             for batch_sample in batch_samples:
-                name = 'data/{}/IMG/'.format(target) + batch_sample[0].split('/')[-1]
+                name = 'data/IMG/' + batch_sample[0].split('/')[-1]
                 image = np.expand_dims(preprocess(cv2.imread(name)), -1)
                 steering = float(batch_sample[1])
                 if batch_sample[2]:
@@ -97,17 +97,14 @@ def model_fn():
     return model
 
 def main():
-
-    target = "2020-04-21"
-
     # Set our batch size
     batch_size=32
-    train_samples, validation_samples, test_samples = get_samples('data/{}/driving_log.csv'.format(target))
+    train_samples, validation_samples, test_samples = get_samples('data/driving_log.csv')
 
     # compile and train the model using the generator function
-    train_generator = generator(target, train_samples, batch_size=batch_size)
-    validation_generator = generator(target, validation_samples, batch_size=batch_size)
-    test_generator = generator(target, test_samples, batch_size=batch_size)
+    train_generator = generator(train_samples, batch_size=batch_size)
+    validation_generator = generator(validation_samples, batch_size=batch_size)
+    test_generator = generator(test_samples, batch_size=batch_size)
 
     model = model_fn()
     model.compile(loss='mse', optimizer='adam')
@@ -118,7 +115,7 @@ def main():
         validation_steps=ceil(len(validation_samples)/batch_size),
         epochs=20, verbose=1)
 
-    model.save("output/{}/model.h5".format(target))
+    model.save("results/model.h5")
 
     ### print test MSE
     result = model.evaluate_generator(test_generator, steps=50)
