@@ -3,6 +3,7 @@ import base64
 from datetime import datetime
 import os
 import shutil
+import cv2
 
 import numpy as np
 import socketio
@@ -48,6 +49,28 @@ set_speed = 9
 controller.set_desired(set_speed)
 
 
+def preprocess(pil_image):
+    pil_image.convert('RGB')
+    rgb_image = np.array(pil_image) 
+    hsv_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2HSV)
+    
+    # Remove sky and sea colors
+    lower = np.array([80,0,0])
+    upper = np.array([140,120,255])
+    mask = cv2.inRange(hsv_image, lower, upper) == 255
+    hsv_image[mask] = 255
+
+    # Use only S value
+    input_image = hsv_image[:,:,1]
+
+    # Crop image
+    input_image = input_image[50:-30]
+
+    # Resize image
+    input_image = cv2.resize(input_image, (80, 20))
+
+    return input_image
+
 @sio.on('telemetry')
 def telemetry(sid, data):
     if data:
@@ -60,11 +83,8 @@ def telemetry(sid, data):
         # The current image from the center camera of the car
         imgString = data["image"]
         image = Image.open(BytesIO(base64.b64decode(imgString)))
-        # image = image.convert('L')
-        image_array = np.asarray(image)
-        # image_array = np.expand_dims(image, -1)
+        image_array = np.expand_dims(preprocess(image), -1)
         steering_angle = float(model.predict(image_array[None, :, :, :], batch_size=1))
-
         throttle = controller.update(float(speed))
 
         print(steering_angle, throttle)

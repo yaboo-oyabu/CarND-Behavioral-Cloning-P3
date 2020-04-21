@@ -23,16 +23,38 @@ import matplotlib.pyplot as plt
 
 
 def get_samples(path_to_csv):
-    lines = []
+    rows = []
     with open(path_to_csv) as csvfile:
         reader = csv.reader(csvfile)
         next(reader, None) # skip the headers
-        for line in reader:
-            lines.append(line)
-
-    train_samples, other_samples = train_test_split(lines, test_size=0.3)
-    validation_samples, test_samples = train_test_split(other_samples, test_size=0.3)
+        for row in reader:
+            steering_center = float(row[3])
+            rows.append([row[0], steering_center, False])
+            rows.append([row[0], -steering_center, True]) # Flip
+    train_and_validation_samples, test_samples = train_test_split(rows, test_size=0.1)
+    train_samples, validation_samples = train_test_split(train_and_validation_samples, test_size=0.2)
     return train_samples, validation_samples, test_samples
+
+def preprocess(image):
+    # Convert image to HSV
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    
+    # Remove sky and sea colors
+    lower = np.array([80,0,0])
+    upper = np.array([140,120,255])
+    mask = cv2.inRange(hsv_image, lower, upper) == 255
+    hsv_image[mask] = 255
+
+    # Use only S value
+    input_image = hsv_image[:,:,1]
+
+    # Crop image
+    input_image = input_image[50:-30]
+
+    # Resize image
+    input_image = cv2.resize(input_image, (80, 20))
+
+    return input_image
 
 def generator(target, samples, batch_size=32):
     num_samples = len(samples)
@@ -45,12 +67,12 @@ def generator(target, samples, batch_size=32):
             angles = []
             for batch_sample in batch_samples:
                 name = 'data/{}/IMG/'.format(target) + batch_sample[0].split('/')[-1]
-                center_image = cv2.imread(name)
-                # center_image = cv2.cvtColor(center_image, cv2.COLOR_BGR2GRAY)
-                # center_image = np.expand_dims(center_image, -1)
-                center_angle = float(batch_sample[3])
-                images.append(center_image)
-                angles.append(center_angle)
+                image = np.expand_dims(preprocess(cv2.imread(name)), -1)
+                steering = float(batch_sample[1])
+                if batch_sample[2]:
+                    image = np.fliplr(image)
+                images.append(image)
+                angles.append(steering)
 
             # trim image to only see section with road
             X_train = np.array(images)
@@ -60,25 +82,19 @@ def generator(target, samples, batch_size=32):
 def model_fn():
     model = Sequential()
 
-    model.add(InputLayer(input_shape=(160, 320, 3)))
+    model.add(InputLayer(input_shape=(20, 80, 1)))
     model.add(Lambda(lambda x: (x / 255.0) - 0.5))
 
-    model.add(Cropping2D(cropping=((20,50),(0,0))))
-    model.add(Conv2D(filters=24, kernel_size=(5,5), strides=(2,2), activation='relu'))
+    model.add(Conv2D(filters=48, kernel_size=(3,3), strides=(1,1), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2,2)))
+    model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2,2)))
+
     model.add(Dropout(0.2))
-    model.add(Conv2D(filters=36, kernel_size=(5,5), strides=(2,2), activation='relu'))
-    #model.add(Conv2D(filters=48, kernel_size=(5,5), strides=(2,2), activation='relu'))
-    model.add(Dropout(0.2))
-    # model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(2,2), activation='relu'))
-    model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(2,2), activation='relu'))
     model.add(Flatten())
     model.add(Dense(100))
-    model.add(Dropout(0.2))
-    model.add(Dense(50))
-    model.add(Dense(10))
     model.add(Dense(1))
     return model
-
 
 def main():
 
@@ -100,7 +116,7 @@ def main():
         steps_per_epoch=ceil(len(train_samples)/batch_size),
         validation_data=validation_generator,
         validation_steps=ceil(len(validation_samples)/batch_size),
-        epochs=10, verbose=1)
+        epochs=20, verbose=1)
 
     model.save("output/{}/model.h5".format(target))
 
