@@ -82,18 +82,18 @@ At the end of the process, the vehicle is able to drive autonomously around the 
 
 The final model architecture (`clone.py` lines 96-123) consisted of a convolution neural network with the following layers and layer sizes.
 
-|Layer (type)                 |Output Shape        |      Param #     :|
-|:---------------------------:|:------------------:|:-----------------:|
-|InputLayer                   |(None, 20, 80, 1)   |      0           :|
-|Lambda                       |(None, 20, 80, 1)   |      0           :|
-|Conv2D with ReLU             |(None, 18, 78, 48)  |      480         :|
-|MaxPooling2D                 |(None, 9, 39, 48)   |      0           :|
-|Conv2D with ReLU             |(None, 7, 37, 64)   |      27712       :|
-|MaxPooling2D                 |(None, 3, 18, 64)   |      0           :|
-|Dropout (0.2)                |(None, 3, 18, 64)   |      0           :|
-|Flatten                      |(None, 3456)        |      0           :|
-|Dense                        |(None, 100)         |      345700      :|
-|Dence + Softmax              |(None, 1)           |      101         :|
+|Layer                        |Output Shape        |      Param #     |
+|:---------------------------:|:------------------:|:-----------------|
+|InputLayer                   |(None, 20, 80, 1)   |      0           |
+|Lambda                       |(None, 20, 80, 1)   |      0           |
+|Conv2D with ReLU             |(None, 18, 78, 48)  |      480         |
+|MaxPooling2D                 |(None, 9, 39, 48)   |      0           |
+|Conv2D with ReLU             |(None, 7, 37, 64)   |      27712       |
+|MaxPooling2D                 |(None, 3, 18, 64)   |      0           |
+|Dropout (0.2)                |(None, 3, 18, 64)   |      0           |
+|Flatten                      |(None, 3456)        |      0           |
+|Dense                        |(None, 100)         |      345700      |
+|Dence + Softmax              |(None, 1)           |      101         |
 
 Lambda layer is used to normalize input images so that their mean values become 0, and avoid ML model to be sensitive to a large values.
 
